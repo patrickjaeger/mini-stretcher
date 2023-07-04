@@ -3,6 +3,8 @@ from ttkbootstrap.constants import *
 from zaber_motion import Units, Library
 from zaber_motion.binary import Connection, DeviceSettings, BinarySettings, CommandCode
 from mini_stretcher import color_LED, zaber_stuff
+from pynput.mouse import Listener
+from time import sleep
 
 
 class Motors:
@@ -22,6 +24,8 @@ class Motors:
         self.connection.close()
 
     def stop(self):
+        if not self.connected:
+            raise ConnectionError("Motors must be connected first.")
         self.device1.stop()
         self.device2.stop()
 
@@ -32,6 +36,8 @@ class Motors:
         self.device2.generic_command_no_response(CommandCode.HOME)
 
     def move_relative_distance(self, length, speed):
+        if not self.connected:
+            raise ConnectionError("Motors must be connected first.")
         self.device1.settings.set(BinarySettings.TARGET_SPEED, speed, Units.VELOCITY_MILLIMETRES_PER_SECOND)
         self.device2.settings.set(BinarySettings.TARGET_SPEED, speed, Units.VELOCITY_MILLIMETRES_PER_SECOND)
 
@@ -39,6 +45,8 @@ class Motors:
         self.device2.generic_command_no_response(CommandCode.MOVE_RELATIVE, self.mm_to_data(-length / 2))
 
     def move_absolute_distance(self, pos, speed):
+        if not self.connected:
+            raise ConnectionError("Motors must be connected first.")
         self.device1.settings.set(BinarySettings.TARGET_SPEED, speed, Units.VELOCITY_MILLIMETRES_PER_SECOND)
         self.device2.settings.set(BinarySettings.TARGET_SPEED, speed, Units.VELOCITY_MILLIMETRES_PER_SECOND)
 
@@ -171,7 +179,10 @@ class ManualMove(ttk.Labelframe):
         except:
             print(f"Could not convert length {self.length_var.get()} into a number.")
             return
-        self.motors.move_relative_distance(length, speed)
+        try:
+            self.motors.move_relative_distance(length, speed)
+        except Exception as e:
+            print(e)
 
 
 class ProtocolFrame(ttk.Labelframe):
@@ -229,7 +240,7 @@ class ControlsFrame(ttk.Labelframe):
         self.goto_zero_btn = ttk.Button(self, text="Go to L0", bootstyle="default", command=self.on_goto_zero_click)
         self.goto_zero_btn.grid(row=0, column=1, padx=5, pady=5, sticky=EW)
 
-        self.trigger_btn = ttk.Button(self, text="Arm trigger", bootstyle="warning")
+        self.trigger_btn = ttk.Button(self, text="Arm trigger", bootstyle="warning", command=self.on_trigger_click)
         self.trigger_btn.grid(row=1, column=0, padx=5, pady=5, sticky=EW)
 
         self.stop_btn = ttk.Button(self, text="STOP", bootstyle="danger", command=self.on_stop_click)
@@ -239,13 +250,53 @@ class ControlsFrame(ttk.Labelframe):
         self.protocol = protocol
 
     def on_goto_zero_click(self):
-        self.motors.move_absolute_distance(float(self.protocol.L0.get()), 2)
+        try:
+            self.motors.move_absolute_distance(float(self.protocol.L0.get()), 2)
+        except Exception as e:
+            print(e)
 
     def on_run_click(self):
-        self.motors.move_absolute_distance(float(self.protocol.TARGET_LENGTH.get()), float(self.protocol.SPEED.get()))
+        try:
+            pause = int(self.protocol.PAUSE.get())
+            for i in range(pause):
+                print(f"START in {pause - i} seconds")
+                sleep(1)
+            self.motors.move_absolute_distance(float(self.protocol.TARGET_LENGTH.get()), float(self.protocol.SPEED.get()))
+        except Exception as e:
+            print(e)
 
     def on_stop_click(self):
-        self.motors.stop()
+        try:
+            self.motors.stop()
+        except Exception as e:
+            print(e)
+
+    def on_trigger_click(self):
+        self.left_counter = 0
+        self.right_counter = 0
+        self.listener = Listener(on_click=self.on_click)
+        self.listener.start()
+
+    def on_click(self, x, y, button, pressed):
+        if button._name_ == "left" and not pressed:
+            self.left_counter += 1
+            print(f"left_counter: {self.left_counter}")
+
+        if button._name_ == "right" and not pressed:
+            self.right_counter += 1
+            print(f"right_counter: {self.right_counter}")
+
+        if self.left_counter == 3:            
+            try:
+                self.on_run_click()
+                print("Protocol LIVE")
+            except Exception as e:
+                print(e)            
+            return False
+
+        if self.right_counter == 3:
+            print("Trigger stopped")
+            return False
 
 
 class StatusFrame(ttk.Labelframe):
