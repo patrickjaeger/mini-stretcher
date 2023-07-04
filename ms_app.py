@@ -223,7 +223,7 @@ class ControlsFrame(ttk.Labelframe):
         self.columnconfigure(0, weight=1)
         self.columnconfigure(1, weight=1)
 
-        self.run_btn = ttk.Button(self, text="Run protocol", bootstyle="secondary")
+        self.run_btn = ttk.Button(self, text="Run protocol", bootstyle="secondary", command=self.on_run_click)
         self.run_btn.grid(row=0, column=0, padx=5, pady=5, sticky=EW)
 
         self.goto_zero_btn = ttk.Button(self, text="Go to L0", bootstyle="default", command=self.on_goto_zero_click)
@@ -232,7 +232,7 @@ class ControlsFrame(ttk.Labelframe):
         self.trigger_btn = ttk.Button(self, text="Arm trigger", bootstyle="warning")
         self.trigger_btn.grid(row=1, column=0, padx=5, pady=5, sticky=EW)
 
-        self.stop_btn = ttk.Button(self, text="STOP", bootstyle="danger")
+        self.stop_btn = ttk.Button(self, text="STOP", bootstyle="danger", command=self.on_stop_click)
         self.stop_btn.grid(row=1, column=1, padx=5, pady=5, sticky=EW)
 
         self.motors = motors
@@ -240,6 +240,12 @@ class ControlsFrame(ttk.Labelframe):
 
     def on_goto_zero_click(self):
         self.motors.move_absolute_distance(float(self.protocol.L0.get()), 2)
+
+    def on_run_click(self):
+        self.motors.move_absolute_distance(float(self.protocol.TARGET_LENGTH.get()), float(self.protocol.SPEED.get()))
+
+    def on_stop_click(self):
+        self.motors.stop()
 
 
 class StatusFrame(ttk.Labelframe):
