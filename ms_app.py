@@ -5,8 +5,64 @@ from zaber_motion.binary import Connection, DeviceSettings, BinarySettings, Comm
 from mini_stretcher import color_LED, zaber_stuff
 
 
+class Motors:
+    ZERO_POSITION = 503937
+
+    def __init__(self):
+        self.connected = False
+
+    def connect(self, port):
+        self.connection = Connection.open_serial_port(port)
+        self.device1 = self.connection.detect_devices()[0]
+        self.device2 = self.connection.detect_devices()[1]
+        self.connected = True
+
+    def disconnect(self):
+        self.connected = False
+        self.connection.close()
+
+    def stop(self):
+        self.device1.stop()
+        self.device2.stop()
+
+    def home(self):
+        if not self.connected:
+            raise ConnectionError("Motors must be connected first.")
+        self.device1.generic_command_no_response(CommandCode.HOME)
+        self.device2.generic_command_no_response(CommandCode.HOME)
+
+    def move_relative_distance(self, length, speed):
+        self.device1.settings.set(BinarySettings.TARGET_SPEED, speed, Units.VELOCITY_MILLIMETRES_PER_SECOND)
+        self.device2.settings.set(BinarySettings.TARGET_SPEED, speed, Units.VELOCITY_MILLIMETRES_PER_SECOND)
+
+        self.device1.generic_command_no_response(CommandCode.MOVE_RELATIVE, self.mm_to_data(-length / 2))
+        self.device2.generic_command_no_response(CommandCode.MOVE_RELATIVE, self.mm_to_data(-length / 2))
+
+    def move_absolute_distance(self, pos, speed):
+        self.device1.settings.set(BinarySettings.TARGET_SPEED, speed, Units.VELOCITY_MILLIMETRES_PER_SECOND)
+        self.device2.settings.set(BinarySettings.TARGET_SPEED, speed, Units.VELOCITY_MILLIMETRES_PER_SECOND)
+
+        position = self.ZERO_POSITION - self.mm_to_data((pos - 12) / 2)
+        self.device1.generic_command_no_response(CommandCode.MOVE_ABSOLUTE, position)
+        self.device2.generic_command_no_response(CommandCode.MOVE_ABSOLUTE, position)
+
+    def mm_to_data(self, length_mm: float) -> int:
+        """Convert millimeters to zaber data units
+        default microstep size: 0.047625 µm
+        position = data[micron] * (Microstep Size[micron])
+        """
+        return round(length_mm * 1000 / 0.047625)
+
+
+class Protocol:
+    L0 = None
+    TARGET_LENGTH = None
+    PAUSE = None
+    SPEED = None
+
+
 class SetupFrame(ttk.Labelframe):
-    def __init__(self, master, motors):
+    def __init__(self, master, motors: Motors):
         super().__init__(master, text="Setup", padding=(5, 5))
 
         self.port_var = ttk.StringVar(value="COM3")
@@ -78,7 +134,7 @@ class SetupFrame(ttk.Labelframe):
 
 
 class ManualMove(ttk.Labelframe):
-    def __init__(self, master, motors):
+    def __init__(self, master, motors: Motors):
         super().__init__(master, text="Manual move", padding=(5, 5))
         # self.pack(fill=BOTH, expand=True, padx=5, pady=2)
         self.columnconfigure(0, weight=1, minsize=120)
@@ -115,11 +171,11 @@ class ManualMove(ttk.Labelframe):
         except:
             print(f"Could not convert length {self.length_var.get()} into a number.")
             return
-        self.motors.move(length, speed)
+        self.motors.move_relative_distance(length, speed)
 
 
 class ProtocolFrame(ttk.Labelframe):
-    def __init__(self, master):
+    def __init__(self, master: Motors, protocol: Protocol):
         super().__init__(master, text="Protocol", padding=(5, 5))
         # self.pack(fill=BOTH, expand=True, padx=5, pady=2)
         self.columnconfigure(0, weight=1, minsize=120)
@@ -154,9 +210,14 @@ class ProtocolFrame(ttk.Labelframe):
         self.speed_ent = ttk.Entry(self, textvariable=self.speed_var, width=6, justify="right")
         self.speed_ent.grid(row=3, column=1, padx=5, pady=2, sticky=E)
 
+        protocol.L0 = self.len_zero_var
+        protocol.TARGET_LENGTH = self.len_target_var
+        protocol.PAUSE = self.pause_var
+        protocol.SPEED = self.speed_var
+
 
 class ControlsFrame(ttk.Labelframe):
-    def __init__(self, master):
+    def __init__(self, master, motors: Motors, protocol: Protocol):
         super().__init__(master, text="Controls", padding=(5, 5))
         # self.pack(fill=BOTH, expand=True, padx=5, pady=2)
         self.columnconfigure(0, weight=1)
@@ -165,7 +226,7 @@ class ControlsFrame(ttk.Labelframe):
         self.run_btn = ttk.Button(self, text="Run protocol", bootstyle="secondary")
         self.run_btn.grid(row=0, column=0, padx=5, pady=5, sticky=EW)
 
-        self.goto_zero_btn = ttk.Button(self, text="Go to L0", bootstyle="default")
+        self.goto_zero_btn = ttk.Button(self, text="Go to L0", bootstyle="default", command=self.on_goto_zero_click)
         self.goto_zero_btn.grid(row=0, column=1, padx=5, pady=5, sticky=EW)
 
         self.trigger_btn = ttk.Button(self, text="Arm trigger", bootstyle="warning")
@@ -174,9 +235,15 @@ class ControlsFrame(ttk.Labelframe):
         self.stop_btn = ttk.Button(self, text="STOP", bootstyle="danger")
         self.stop_btn.grid(row=1, column=1, padx=5, pady=5, sticky=EW)
 
+        self.motors = motors
+        self.protocol = protocol
+
+    def on_goto_zero_click(self):
+        self.motors.move_absolute_distance(float(self.protocol.L0.get()), 2)
+
 
 class StatusFrame(ttk.Labelframe):
-    def __init__(self, master):
+    def __init__(self, master, motors: Motors):
         super().__init__(master, text="Status", padding=(5, 5))
         # self.pack(fill=BOTH, expand=True, padx=5, pady=2)
         self.columnconfigure(0, weight=1)
@@ -192,34 +259,7 @@ class StatusFrame(ttk.Labelframe):
         self.clen_out = ttk.Label(self, text="12")
         self.clen_out.grid(row=1, column=1, padx=5, pady=2, sticky=W)
 
-
-class Motors:
-    def __init__(self):
-        self.connected = False
-
-    def connect(self, port):
-        self.connection = Connection.open_serial_port(port)
-        self.device1 = self.connection.detect_devices()[0]
-        self.device2 = self.connection.detect_devices()[1]
-        self.connected = True
-
-    def disconnect(self):
-        self.connected = False
-        self.connection.close()
-
-    def home(self):
-        if not self.connected:
-            raise ConnectionError("Motors must be connected first.")
-        self.device1.generic_command_no_response(CommandCode.HOME)
-        self.device2.generic_command_no_response(CommandCode.HOME)
-
-    def move(self, length, speed):
-        self.device1.settings.set(BinarySettings.TARGET_SPEED, speed, Units.VELOCITY_MILLIMETRES_PER_SECOND)
-        self.device2.settings.set(BinarySettings.TARGET_SPEED, speed, Units.VELOCITY_MILLIMETRES_PER_SECOND)
-
-        self.device1.generic_command_no_response(CommandCode.MOVE_RELATIVE, round(length * 1000 / 0.047625))
-        self.device2.generic_command_no_response(CommandCode.MOVE_RELATIVE, round(length * 1000 / 0.047625))
-
+        self.motors = motors
 
 
 if __name__ == "__main__":
@@ -228,11 +268,12 @@ if __name__ == "__main__":
     app = ttk.Window("miniStretcher", "darkly", resizable=(False, False), iconphoto="icons/banana2.png")
 
     motors = Motors()
+    protocol = Protocol()
 
     SetupFrame(app, motors).grid(row=0, column=0, sticky=NSEW, padx=5, pady=2)
     ManualMove(app, motors).grid(row=0, column=1, sticky=NSEW, padx=5, pady=2)
-    ProtocolFrame(app).grid(row=1, column=0, rowspan=2, sticky=NSEW, padx=5, pady=2)
-    ControlsFrame(app).grid(row=1, column=1, sticky=NSEW, padx=5, pady=2)
-    StatusFrame(app).grid(row=2, column=1, sticky=NSEW, padx=5, pady=2)
+    ProtocolFrame(app, protocol).grid(row=1, column=0, rowspan=2, sticky=NSEW, padx=5, pady=2)
+    ControlsFrame(app, motors, protocol).grid(row=1, column=1, sticky=NSEW, padx=5, pady=2)
+    StatusFrame(app, motors).grid(row=2, column=1, sticky=NSEW, padx=5, pady=2)
 
     app.mainloop()
