@@ -170,17 +170,7 @@ class ManualMove(ttk.Labelframe):
 
     def on_move_click(self):
         try:
-            speed = float(self.speed_var.get())
-        except:
-            print(f"Could not convert speed {self.speed_var.get()} into a number.")
-            return
-        try:
-            length = float(self.length_var.get())
-        except:
-            print(f"Could not convert length {self.length_var.get()} into a number.")
-            return
-        try:
-            self.motors.move_relative_distance(length, speed)
+            self.motors.move_relative_distance(float(self.length_var.get()), float(self.speed_var.get()))
         except Exception as e:
             print(e)
 
