@@ -115,6 +115,7 @@ class ManualMove(ttk.Labelframe):
         except:
             print(f"Could not convert length {self.length_var.get()} into a number.")
             return
+        self.motors.move(length, speed)
 
 
 class ProtocolFrame(ttk.Labelframe):
@@ -212,8 +213,13 @@ class Motors:
         self.device1.generic_command_no_response(CommandCode.HOME)
         self.device2.generic_command_no_response(CommandCode.HOME)
 
-    def move(self):
-        pass
+    def move(self, length, speed):
+        self.device1.settings.set(BinarySettings.TARGET_SPEED, speed, Units.VELOCITY_MILLIMETRES_PER_SECOND)
+        self.device2.settings.set(BinarySettings.TARGET_SPEED, speed, Units.VELOCITY_MILLIMETRES_PER_SECOND)
+
+        self.device1.generic_command_no_response(CommandCode.MOVE_RELATIVE, round(length * 1000 / 0.047625))
+        self.device2.generic_command_no_response(CommandCode.MOVE_RELATIVE, round(length * 1000 / 0.047625))
+
 
 
 if __name__ == "__main__":
