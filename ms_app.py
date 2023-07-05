@@ -1,10 +1,15 @@
+import os
+
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
-from zaber_motion import Units
+from zaber_motion import Units, Library
 from zaber_motion.binary import Connection, BinarySettings, CommandCode
 from mini_stretcher import color_LED
 from pynput.mouse import Listener
 from time import sleep
+
+
+Library.enable_device_db_store(os.path.dirname(__file__) + "/zaber_device_db")
 
 
 class Motors:
@@ -15,9 +20,13 @@ class Motors:
 
     def connect(self, port):
         self.connection = Connection.open_serial_port(port)
-        self.device1 = self.connection.detect_devices()[0]
-        self.device2 = self.connection.detect_devices()[1]
-        self.connected = True
+        try:
+            self.device1 = self.connection.detect_devices()[0]
+            self.device2 = self.connection.detect_devices()[1]
+            self.connected = True
+        except Exception as e:
+            self.connection.close()
+            raise e
 
     def disconnect(self):
         self.connected = False
