@@ -54,6 +54,11 @@ class Motors:
         self.device1.generic_command_no_response(CommandCode.MOVE_ABSOLUTE, position)
         self.device2.generic_command_no_response(CommandCode.MOVE_ABSOLUTE, position)
 
+    def get_positions(self):
+        if not self.connected:
+            raise ConnectionError("Motors must be connected first.")
+        return self.device1.settings.get(BinarySettings.CURRENT_POSITION), self.device2.settings.get(BinarySettings.CURRENT_POSITION)
+
     def mm_to_data(self, length_mm: float) -> int:
         """Convert millimeters to zaber data units
         default microstep size: 0.047625 µm
@@ -170,7 +175,7 @@ class ManualMove(ttk.Labelframe):
 
     def on_move_click(self):
         try:
-            self.motors.move_relative_distance(float(self.length_var.get()), float(self.speed_var.get()))
+            self.motors.move_absolute_distance(float(self.length_var.get()), float(self.speed_var.get()))
         except Exception as e:
             print(e)
 
@@ -303,10 +308,25 @@ class StatusFrame(ttk.Labelframe):
 
         self.clen_lbl = ttk.Label(self, text="Current length [mm]:")
         self.clen_lbl.grid(row=1, column=0, padx=5, pady=2, sticky=E)
-        self.clen_out = ttk.Label(self, text="12")
+        self.clen_out = ttk.Label(self, text="-")
         self.clen_out.grid(row=1, column=1, padx=5, pady=2, sticky=W)
 
         self.motors = motors
+
+        self.last_distance = 12
+        self.display_values()
+
+    def display_values(self):
+        if self.motors.connected:
+            pos1, pos2 = self.motors.get_positions()
+            distance = ((motors.ZERO_POSITION - pos1) + (motors.ZERO_POSITION - pos2)) / 1000 * 0.047625 + 12
+            self.clen_out["text"] = "{:10.4f}".format(distance)
+            if self.last_distance != distance:
+                self.status_out["text"] = "running"
+            else:
+                self.status_out["text"] = "idle"
+            self.last_distance = distance
+        self.after(100, self.display_values)
 
 
 if __name__ == "__main__":
