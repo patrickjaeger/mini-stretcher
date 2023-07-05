@@ -1,8 +1,8 @@
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
-from zaber_motion import Units, Library
-from zaber_motion.binary import Connection, DeviceSettings, BinarySettings, CommandCode
-from mini_stretcher import color_LED, zaber_stuff
+from zaber_motion import Units
+from zaber_motion.binary import Connection, BinarySettings, CommandCode
+from mini_stretcher import color_LED
 from pynput.mouse import Listener
 from time import sleep
 
@@ -241,7 +241,7 @@ class ControlsFrame(ttk.Labelframe):
 
     def on_goto_zero_click(self):
         try:
-            self.motors.move_absolute_distance(float(self.protocol.L0.get()), 2)
+            self.motors.move_absolute_distance(float(self.protocol.L0.get()), 5)
         except Exception as e:
             print(e)
 
@@ -276,12 +276,12 @@ class ControlsFrame(ttk.Labelframe):
             self.right_counter += 1
             print(f"right_counter: {self.right_counter}")
 
-        if self.left_counter == 3:            
+        if self.left_counter == 3:
             try:
                 self.on_run_click()
                 print("Protocol LIVE")
             except Exception as e:
-                print(e)            
+                print(e)
             return False
 
         if self.right_counter == 3:
