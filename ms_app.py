@@ -38,8 +38,8 @@ class Motors:
     def move_relative_distance(self, length, speed):
         if not self.connected:
             raise ConnectionError("Motors must be connected first.")
-        self.device1.settings.set(BinarySettings.TARGET_SPEED, speed, Units.VELOCITY_MILLIMETRES_PER_SECOND)
-        self.device2.settings.set(BinarySettings.TARGET_SPEED, speed, Units.VELOCITY_MILLIMETRES_PER_SECOND)
+        self.device1.settings.set(BinarySettings.TARGET_SPEED, speed / 2, Units.VELOCITY_MILLIMETRES_PER_SECOND)
+        self.device2.settings.set(BinarySettings.TARGET_SPEED, speed / 2, Units.VELOCITY_MILLIMETRES_PER_SECOND)
 
         self.device1.generic_command_no_response(CommandCode.MOVE_RELATIVE, self.mm_to_data(-length / 2))
         self.device2.generic_command_no_response(CommandCode.MOVE_RELATIVE, self.mm_to_data(-length / 2))
@@ -47,8 +47,8 @@ class Motors:
     def move_absolute_distance(self, pos, speed):
         if not self.connected:
             raise ConnectionError("Motors must be connected first.")
-        self.device1.settings.set(BinarySettings.TARGET_SPEED, speed, Units.VELOCITY_MILLIMETRES_PER_SECOND)
-        self.device2.settings.set(BinarySettings.TARGET_SPEED, speed, Units.VELOCITY_MILLIMETRES_PER_SECOND)
+        self.device1.settings.set(BinarySettings.TARGET_SPEED, speed / 2, Units.VELOCITY_MILLIMETRES_PER_SECOND)
+        self.device2.settings.set(BinarySettings.TARGET_SPEED, speed / 2, Units.VELOCITY_MILLIMETRES_PER_SECOND)
 
         position = self.ZERO_POSITION - self.mm_to_data((pos - 12) / 2)
         self.device1.generic_command_no_response(CommandCode.MOVE_ABSOLUTE, position)
