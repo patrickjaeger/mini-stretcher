@@ -104,11 +104,17 @@ class SetupFrame(ttk.Labelframe):
         self.home_led = color_LED.ColorLED(self)
         self.home_led.grid(row=1, column=2, padx=5, pady=2)
 
+        self.top_button = ttk.Button(self, text="Make win top", state="enabled", command=self.on_top_click)
+        self.top_button.grid(row=2, column=1, padx=5, pady=2)
+
         self.connection_state = "naive"
         self.connection = None
         self.home_state = "naive"
         self.device1 = None
         self.device2 = None
+
+        self.master = master
+        self.on_top = False
 
         self.motors = motors
 
@@ -150,6 +156,18 @@ class SetupFrame(ttk.Labelframe):
             self.home_btn.configure(state="disabled")
             self.home_state = "homed"
             self.home_led.set_color("green")
+
+    def on_top_click(self):
+        if self.on_top:
+            self.on_top = False
+            self.master.wm_attributes("-topmost", False)
+            self.master.update()
+            self.top_button.configure(text="Make win top")
+        else:
+            self.on_top = True
+            self.master.wm_attributes("-topmost", True)
+            self.master.update()
+            self.top_button.configure(text="Make win behind")
 
     def callback(self):
         print(self.port_var.get())
