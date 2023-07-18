@@ -99,13 +99,13 @@ class SetupFrame(ttk.Labelframe):
         self.connect_led.grid(row=0, column=2, padx=5, pady=2)
 
         self.home_btn = ttk.Button(self, text="Home stages", state="disabled", command=self.on_home_click)
-        self.home_btn.grid(row=1, column=1, padx=5, pady=2)
+        self.home_btn.grid(row=1, column=1, padx=5, pady=2, sticky=EW)
 
         self.home_led = color_LED.ColorLED(self)
         self.home_led.grid(row=1, column=2, padx=5, pady=2)
 
-        self.top_button = ttk.Button(self, text="Make win top", state="enabled", command=self.on_top_click)
-        self.top_button.grid(row=2, column=1, padx=5, pady=2)
+        self.top_button = ttk.Button(self, text="Pin [0]", state="enabled", command=self.on_top_click)
+        self.top_button.grid(row=2, column=1, padx=5, pady=2, sticky=EW)
 
         self.connection_state = "naive"
         self.connection = None
@@ -162,12 +162,12 @@ class SetupFrame(ttk.Labelframe):
             self.on_top = False
             self.master.wm_attributes("-topmost", False)
             self.master.update()
-            self.top_button.configure(text="Make win top")
+            self.top_button.configure(text="Pin [0]")
         else:
             self.on_top = True
             self.master.wm_attributes("-topmost", True)
             self.master.update()
-            self.top_button.configure(text="Make win behind")
+            self.top_button.configure(text="Pin [1]")
 
     def callback(self):
         print(self.port_var.get())
